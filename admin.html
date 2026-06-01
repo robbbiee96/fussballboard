@@ -10,8 +10,6 @@
         .controls { margin: 40px auto; background: #23232f; padding: 25px; border-radius: 12px; color: white; display: flex; flex-wrap: wrap; gap: 12px; max-width: 850px; justify-content: center; border: 2px solid #111; box-shadow: 0 20px 40px rgba(0,0,0,0.8); }
         .controls h3 { width: 100%; text-align: center; margin-top: 0; color: #a5a5b9; font-size: 13px; letter-spacing: 2px; }
         .controls input { padding: 10px; font-size: 16px; text-align: center; border-radius: 6px; background: #1a1a24; color: white; font-weight: bold; border: 1px solid #555;}
-        .controls input[type="number"]::-webkit-outer-spin-button, .controls input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .controls input[type="number"] { -moz-appearance: textfield; }
         button { padding: 12px 18px; font-size: 14px; cursor: pointer; border: none; border-radius: 6px; background: #2ed573; font-weight: bold; text-transform: uppercase; }
         .btn-main { padding: 16px 24px; font-size: 16px; min-width: 140px; }
         .btn-large { width: 100%; max-width: 660px; padding: 20px; font-size: 20px; letter-spacing: 1px; }
@@ -32,11 +30,16 @@
         <h2 style="color: white; font-family: 'Montserrat', sans-serif;">Moderator Login</h2>
         <p style="color: #8a8a9e; margin-bottom: 20px;">Bitte autorisiere dich, um das Scoreboard zu steuern.</p>
         <button id="btn-login" style="background: #ffffff; color: #333; padding: 12px 24px; font-size: 16px;">Mit Google einloggen</button>
-        <div id="uid-display" style="color: #ff4757; margin-top: 20px; font-family: monospace; font-size: 14px;"></div>
     </div>
 
     <div id="main-app" class="controls">
         <h3>Stream Deck Control Panel</h3>
+        
+        <div class="control-group">
+            <button id="btn-visibility" class="btn-large btn-red" onclick="toggleVisibility()">OVERLAY EIN / AUS</button>
+        </div>
+        <hr>
+
         <div class="control-group">
             <div class="input-box"><label>Heim</label><input type="text" id="input-team1" value="GER" style="width: 90px;"></div>
             <div class="input-box"><label>Flagge</label><input type="text" id="input-flag1" value="de" style="width: 40px;"></div>
@@ -75,7 +78,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -93,90 +96,84 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
+        // Lädt den State aus der DB, falls vorhanden
         let state = {
             t1: "GER", f1: "de", s1: 0,
             t2: "FIN", f2: "fi", s2: 0,
-            running: false, baseSec: 0, startTs: Date.now(), half: 1, mode: "normal" 
+            running: false, baseSec: 0, startTs: Date.now(), half: 1, mode: "normal",
+            visible: true
         };
 
-        // Login Logik
-        document.getElementById('btn-login').addEventListener('click', () => {
-            signInWithPopup(auth, provider).catch(error => console.error("Login Fehler:", error));
-        });
-
-        // Optionaler EventListener für Logout, falls das Board normal lädt
-        const btnLogout = document.getElementById('btn-logout');
-        if(btnLogout) {
-            btnLogout.addEventListener('click', () => { signOut(auth); });
+        async function sync() {
+            try {
+                await set(ref(db, 'match/'), state);
+                document.getElementById('status').innerText = "Datenbank aktiv. Änderungen live.";
+                document.getElementById('status').style.color = "#2ed573";
+            } catch (error) {
+                console.error(error);
+            }
         }
+
+        // Sichtbarkeit umschalten
+        window.toggleVisibility = async () => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
+            state.visible = !state.visible;
+            sync();
+        };
+
+        document.getElementById('btn-login').addEventListener('click', () => { signInWithPopup(auth, provider); });
+        document.getElementById('btn-logout').addEventListener('click', () => { signOut(auth); });
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'flex';
-                console.log("Deine UID lautet: " + user.uid);
-                
                 enableHotkeys();
-                sync(); 
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
-                document.getElementById('uid-display').innerText = "";
             }
         });
 
-        function sync() {
-            set(ref(db, 'match/'), state).then(() => {
-                const statusEl = document.getElementById('status');
-                if (statusEl) {
-                    statusEl.innerText = "Datenbank aktiv. Änderungen live.";
-                    statusEl.style.color = "#2ed573";
-                }
-            }).catch((error) => {
-                // HIER greift die harte Sperre: Das gesamte HTML des Panels wird durch den Fehlerbildschirm ersetzt.
-                const mainApp = document.getElementById('main-app');
-                mainApp.innerHTML = `
-                    <div style="text-align: center; width: 100%; padding: 40px 0;">
-                        <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
-                        <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account ist nicht freigeschaltet.</p>
-                        <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
-                    </div>
-                `;
-                
-                // Logout-Funktion für den neuen Button
-                document.getElementById('btn-logout-error').addEventListener('click', () => {
-                    signOut(auth).then(() => window.location.reload());
-                });
-            });
-        }
-
-        window.updateTeams = () => {
+        window.updateTeams = async () => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             state.t1 = document.getElementById('input-team1').value; state.f1 = document.getElementById('input-flag1').value.toLowerCase();
             state.t2 = document.getElementById('input-team2').value; state.f2 = document.getElementById('input-flag2').value.toLowerCase(); sync();
         };
 
-        window.changeScore = (team, amount) => {
+        window.changeScore = async (team, amount) => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             if (team === 1) state.s1 = Math.max(0, state.s1 + amount);
             if (team === 2) state.s2 = Math.max(0, state.s2 + amount); sync();
         };
 
-        window.toggleTimer = () => {
+        window.toggleTimer = async () => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             if (state.running) { state.baseSec += Math.floor((Date.now() - state.startTs) / 1000); state.running = false; } 
             else { state.startTs = Date.now(); state.running = true; if(state.mode !== "normal") state.mode = "normal"; } sync();
         };
 
-        window.setHalf = (half) => {
+        window.setHalf = async (half) => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             state.half = half; state.baseSec = (half === 1) ? 0 : 45 * 60; state.startTs = Date.now(); state.running = true; state.mode = "normal"; sync();
         };
 
-        window.setMode = (mode) => {
+        window.setMode = async (mode) => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             if (state.running) { state.baseSec += Math.floor((Date.now() - state.startTs) / 1000); state.running = false; }
             state.mode = mode; sync();
         };
 
-        window.setManualTime = () => {
+        window.setManualTime = async () => {
+            const snapshot = await get(ref(db, 'match/'));
+            if(snapshot.exists()) state = snapshot.val();
             let m = parseInt(document.getElementById('input-min').value) || 0; let s = parseInt(document.getElementById('input-sec').value) || 0;
-            if (m > 90) m = 90; if (m < 0) m = 0; if (s > 59) s = 59; if (s < 0) s = 0;
             state.baseSec = (m * 60) + s; state.startTs = Date.now(); if(state.mode !== "normal") state.mode = "normal"; sync();
         };
 
@@ -184,10 +181,6 @@
             document.addEventListener('keydown', (e) => {
                 if(document.activeElement.tagName === 'INPUT') return; 
                 switch(e.key.toLowerCase()) {
-                    case '1': window.changeScore(1, 1); break; case '2': window.changeScore(2, 1); break;
-                    case 't': window.setHalf(1); break; case 'z': window.setHalf(2); break;
-                    case 'h': window.setMode('halftime'); break; case 'j': window.setMode('end'); break;
-                    case '5': window.changeScore(1, -1); break; case '6': window.changeScore(2, -1); break;
                     case ' ': e.preventDefault(); window.toggleTimer(); break;
                 }
             });
