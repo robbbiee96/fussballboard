@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Scoreboard Overlay</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Roboto+Mono:wght@700&display=swap');
+
+        /* Hintergrund auf komplett transparent gesetzt */
+        body { margin: 0; font-family: 'Montserrat', sans-serif; background-color: transparent; overflow: hidden; }
+        
+        .overlay { display: flex; flex-direction: column; align-items: center; padding-top: 40px; }
+        
+        .scoreboard-container { filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.8)); display: flex; flex-direction: column; align-items: center; }
+        
+        .scoreboard { display: flex; background: linear-gradient(180deg, rgba(35, 35, 45, 1) 0%, rgba(15, 15, 20, 1) 100%); border-radius: 12px; border: 1px solid #555; height: 75px; color: white; }
+        
+        .team-box { display: flex; align-items: center; width: 240px; padding: 0 25px; }
+        .team-left { justify-content: flex-start; }
+        .team-right { justify-content: flex-end; }
+
+        .team-name { font-size: 36px; font-weight: 900; letter-spacing: 2px; margin: 0 18px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .flag { width: 52px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); }
+
+        .score-box { display: flex; align-items: center; justify-content: center; background: #000; padding: 0 25px; min-width: 130px; }
+        .score { font-size: 56px; font-weight: 900; color: #ffffff; min-width: 45px; text-align: center; }
+        .colon { font-size: 40px; margin: 0 12px; color: #555; padding-bottom: 8px; }
+
+        @keyframes goalFlash { 0% { transform: scale(1); color: #ffffff; } 20% { transform: scale(1.5); color: #e5f83c; } 100% { transform: scale(1); color: #ffffff; } }
+        .goal-anim { animation: goalFlash 1.5s ease-out; }
+
+        .time-container { background: #000; padding: 6px 30px; border-radius: 0 0 12px 12px; border: 1px solid #555; border-top: none; display: flex; gap: 15px; align-items: center; justify-content: center; margin-top: -1px; color: white; min-height: 30px; }
+        .live-dot { width: 8px; height: 8px; background-color: #ff3b30; border-radius: 50%; opacity: 0.2; }
+        .live-dot.active { opacity: 1; box-shadow: 0 0 8px #ff3b30; }
+        .main-time { font-family: 'Roboto Mono', monospace; font-size: 26px; font-weight: 700; color: #ffffff; }
+        
+        .stoppage-time { font-family: 'Roboto Mono', monospace; font-size: 22px; color: #ff3b30; display: none; font-weight: 700; }
+        .status-text { font-size: 24px; font-weight: 900; color: #ffffff; display: none; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+
+    <div class="overlay">
+        <div class="scoreboard-container">
+            <div class="scoreboard">
+                <div class="team-box team-left">
+                    <img src="https://flagcdn.com/de.svg" class="flag" id="flag1">
+                    <span class="team-name" id="team1-name">GER</span>
+                </div>
+                <div class="score-box"><span class="score" id="score1">0</span><span class="colon">:</span><span class="score" id="score2">0</span></div>
+                <div class="team-box team-right">
+                    <span class="team-name" id="team2-name">FIN</span>
+                    <img src="https://flagcdn.com/fi.svg" class="flag" id="flag2">
+                </div>
+            </div>
+            <div class="time-container">
+                <div class="live-dot" id="live-dot"></div>
+                <div class="main-time" id="main-time">00:00</div>
+                <div class="stoppage-time" id="stoppage-time">+00:00</div>
+                <div class="status-text" id="status-text">HALBZEIT</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCcj87AF4IXH_kChN6QLkbW-M_7SUqesRQ",
+            authDomain: "twitch-scoreboard-obs.firebaseapp.com",
+            databaseURL: "https://twitch-scoreboard-obs-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "twitch-scoreboard-obs",
+            storageBucket: "twitch-scoreboard-obs.firebasestorage.app",
+            messagingSenderId: "525252191026",
+            appId: "1:525252191026:web:b14958e56b30cb39036d2b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let matchState = null;
+        let previousState = null;
+
+        function triggerGoalAnimation(elementId) {
+            const el = document.getElementById(elementId); 
+            el.classList.remove('goal-anim'); 
+            void el.offsetWidth; 
+            el.classList.add('goal-anim');
+        }
+
+        onValue(ref(db, 'match/'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            if (previousState) {
+                if (data.s1 > previousState.s1) triggerGoalAnimation('score1');
+                if (data.s2 > previousState.s2) triggerGoalAnimation('score2');
+            }
+
+            document.getElementById('team1-name').innerText = data.t1;
+            document.getElementById('flag1').src = `https://flagcdn.com/${data.f1}.svg`;
+            document.getElementById('score1').innerText = data.s1;
+            
+            document.getElementById('team2-name').innerText = data.t2;
+            document.getElementById('flag2').src = `https://flagcdn.com/${data.f2}.svg`;
+            document.getElementById('score2').innerText = data.s2;
+
+            matchState = data;
+            previousState = { ...data };
+            
+            updateTimerDisplay(); 
+        });
+
+        function formatTime(totalSeconds) {
+            let m = Math.floor(totalSeconds / 60);
+            let s = totalSeconds % 60;
+            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+        }
+
+        function updateTimerDisplay() {
+            if (!matchState) return;
+
+            const dot = document.getElementById('live-dot');
+            const mainTimeEl = document.getElementById('main-time');
+            const statusTextEl = document.getElementById('status-text');
+            const stoppageTimeEl = document.getElementById('stoppage-time');
+
+            if (matchState.mode !== "normal") {
+                dot.style.display = 'none';
+                mainTimeEl.style.display = 'none';
+                stoppageTimeEl.style.display = 'none';
+                statusTextEl.style.display = 'block';
+                statusTextEl.innerText = matchState.mode === 'end' ? "SPIELENDE" : "HALBZEIT";
+                return;
+            }
+
+            statusTextEl.style.display = 'none';
+            dot.style.display = 'block';
+            mainTimeEl.style.display = 'block';
+            
+            if(matchState.running) dot.classList.add('active'); 
+            else dot.classList.remove('active');
+
+            let totalSec = matchState.baseSec;
+            if (matchState.running) {
+                totalSec += Math.floor((Date.now() - matchState.startTs) / 1000);
+            }
+
+            let isStoppage = false;
+            let stoppageSec = 0;
+            let displaySec = totalSec;
+
+            if (matchState.half === 1 && totalSec >= 45 * 60) {
+                isStoppage = true; stoppageSec = totalSec - 45 * 60; displaySec = 45 * 60;
+            } else if (matchState.half === 2 && totalSec >= 90 * 60) {
+                isStoppage = true; stoppageSec = totalSec - 90 * 60; displaySec = 90 * 60;
+            }
+
+            mainTimeEl.innerText = formatTime(displaySec);
+
+            if (isStoppage) {
+                stoppageTimeEl.innerText = "+" + formatTime(stoppageSec);
+                stoppageTimeEl.style.display = 'block';
+            } else {
+                stoppageTimeEl.style.display = 'none';
+            }
+        }
+
+        setInterval(updateTimerDisplay, 200);
+    </script>
+</body>
+</html>
