@@ -75,7 +75,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -99,12 +99,10 @@
             running: false, baseSec: 0, startTs: Date.now(), half: 1, mode: "normal" 
         };
 
-        // Login Logik
         document.getElementById('btn-login').addEventListener('click', () => {
             signInWithPopup(auth, provider).catch(error => console.error("Login Fehler:", error));
         });
 
-        // Optionaler EventListener für Logout, falls das Board normal lädt
         const btnLogout = document.getElementById('btn-logout');
         if(btnLogout) {
             btnLogout.addEventListener('click', () => { signOut(auth); });
@@ -117,7 +115,32 @@
                 console.log("Deine UID lautet: " + user.uid);
                 
                 enableHotkeys();
-                sync(); 
+                
+                // Zuerst aktuelle Daten aus der DB holen, anstatt sofort zu überschreiben
+                get(ref(db, 'match/')).then((snapshot) => {
+                    if (snapshot.exists()) {
+                        // Den lokalen State mit den Daten aus Firebase aktualisieren
+                        state = { ...state, ...snapshot.val() };
+                        
+                        // Input-Felder mit den geladenen Namen/Flaggen füllen
+                        document.getElementById('input-team1').value = state.t1;
+                        document.getElementById('input-flag1').value = state.f1;
+                        document.getElementById('input-team2').value = state.t2;
+                        document.getElementById('input-flag2').value = state.f2;
+                        
+                        const statusEl = document.getElementById('status');
+                        if (statusEl) {
+                            statusEl.innerText = "Datenbank verbunden. Aktueller Spielstand geladen.";
+                            statusEl.style.color = "#2ed573";
+                        }
+                    } else {
+                        // Wenn die Datenbank komplett leer ist, pushen wir einmalig den Start-State
+                        sync();
+                    }
+                }).catch((error) => {
+                    showErrorScreen();
+                });
+
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
@@ -125,28 +148,30 @@
             }
         });
 
+        function showErrorScreen() {
+            const mainApp = document.getElementById('main-app');
+            mainApp.innerHTML = `
+                <div style="text-align: center; width: 100%; padding: 40px 0;">
+                    <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
+                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account ist nicht freigeschaltet.</p>
+                    <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
+                </div>
+            `;
+            document.getElementById('btn-logout-error').addEventListener('click', () => {
+                signOut(auth).then(() => window.location.reload());
+            });
+        }
+
         function sync() {
             set(ref(db, 'match/'), state).then(() => {
                 const statusEl = document.getElementById('status');
                 if (statusEl) {
-                    statusEl.innerText = "Datenbank aktiv. Änderungen live.";
+                    statusEl.innerText = "Änderung gespeichert.";
                     statusEl.style.color = "#2ed573";
+                    setTimeout(() => { statusEl.innerText = "Datenbank aktiv. Änderungen live."; }, 2000);
                 }
             }).catch((error) => {
-                // HIER greift die harte Sperre: Das gesamte HTML des Panels wird durch den Fehlerbildschirm ersetzt.
-                const mainApp = document.getElementById('main-app');
-                mainApp.innerHTML = `
-                    <div style="text-align: center; width: 100%; padding: 40px 0;">
-                        <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
-                        <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account ist nicht freigeschaltet.</p>
-                        <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
-                    </div>
-                `;
-                
-                // Logout-Funktion für den neuen Button
-                document.getElementById('btn-logout-error').addEventListener('click', () => {
-                    signOut(auth).then(() => window.location.reload());
-                });
+                showErrorScreen();
             });
         }
 
