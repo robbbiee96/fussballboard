@@ -126,6 +126,7 @@
             const statusTextEl = document.getElementById('status-text');
             const stoppageTimeEl = document.getElementById('stoppage-time');
 
+            // Wenn das Spiel auf Halbzeitpause oder Ende steht
             if (matchState.mode !== "normal") {
                 dot.style.display = 'none';
                 mainTimeEl.style.display = 'none';
@@ -135,6 +136,7 @@
                 return;
             }
 
+            // Normaler Timer-Modus
             statusTextEl.style.display = 'none';
             dot.style.display = 'block';
             mainTimeEl.style.display = 'block';
@@ -151,10 +153,18 @@
             let stoppageSec = 0;
             let displaySec = totalSec;
 
-            if (matchState.half === 1 && totalSec >= 45 * 60) {
-                isStoppage = true; stoppageSec = totalSec - 45 * 60; displaySec = 45 * 60;
-            } else if (matchState.half === 2 && totalSec >= 90 * 60) {
-                isStoppage = true; stoppageSec = totalSec - 90 * 60; displaySec = 90 * 60;
+            // Sicherstellen, dass die Halbzeit aus der DB immer eine saubere Zahl ist
+            const currentHalf = parseInt(matchState.half) || 1;
+
+            // Logik für Nachspielzeit
+            if (currentHalf === 1 && totalSec >= 45 * 60) {
+                isStoppage = true; 
+                stoppageSec = totalSec - 45 * 60; 
+                displaySec = 45 * 60;
+            } else if (currentHalf === 2 && totalSec >= 90 * 60) {
+                isStoppage = true; 
+                stoppageSec = totalSec - 90 * 60; 
+                displaySec = 90 * 60;
             }
 
             mainTimeEl.innerText = formatTime(displaySec);
