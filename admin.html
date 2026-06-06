@@ -56,7 +56,6 @@
         <h2 style="color: white; font-family: 'Montserrat', sans-serif;">Moderator Login</h2>
         <p style="color: #8a8a9e; margin-bottom: 20px;">Bitte autorisiere dich, um das Scoreboard zu steuern.</p>
         <button id="btn-login" style="background: #ffffff; color: #333; padding: 15px 30px; font-size: 16px; border-radius: 8px;">Mit Google einloggen</button>
-        <div id="uid-display" style="color: #ff4757; margin-top: 20px; font-family: monospace; font-size: 14px; word-break: break-all;"></div>
     </div>
 
     <div id="main-app" class="controls">
@@ -102,7 +101,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+        // NEU: 'update' importiert für den Test-Schreibvorgang
+        import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -119,13 +119,6 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
-
-        // 🛡️ FRONTEND WHITELIST: Hier sind alle UIDs definiert, die das Panel sehen dürfen
-        const allowedUIDs = [
-            "KER5HiMngMNFgZRaczpq1GAkUuR2",
-            "8ZRy9NwuW3UAFDc1YkC77JY3lpm2",
-            "TZPkVlm2MofHRaPboq9l0Pgr8jN2"
-        ];
 
         let serverOffset = 0;
         onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
@@ -152,45 +145,52 @@
             const loginBtn = document.getElementById('btn-login');
             
             if (user) {
-                // 🛑 HARTE SPERRE VOR DEM LADEN
-                // Prüfen, ob der eingeloggte Account in deiner Whitelist steht
-                if (!allowedUIDs.includes(user.uid)) {
-                    showErrorScreen();
-                    return; // Beendet die Ausführung sofort, das Panel bleibt unsichtbar
-                }
-
                 if (loginBtn) {
-                    loginBtn.innerText = "Lade Scoreboard...";
+                    loginBtn.innerText = "Prüfe Schreibrechte in Firebase...";
                     loginBtn.style.background = "#fbc531";
                     loginBtn.style.color = "#111";
                     loginBtn.disabled = true;
                 }
                 
-                enableHotkeys();
-                
+                // 1. Zuerst lesen wir den aktuellen Stand (das darf wegen .read: true jeder)
                 get(ref(db, 'match/')).then((snapshot) => {
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('main-app').style.display = 'flex';
-                    
-                    if (snapshot.exists()) {
-                        state = { ...state, ...snapshot.val() };
-                        document.getElementById('input-team1').value = state.t1;
-                        document.getElementById('input-flag1').value = state.f1;
-                        document.getElementById('input-team2').value = state.t2;
-                        document.getElementById('input-flag2').value = state.f2;
-                        const statusEl = document.getElementById('status');
-                        if (statusEl) {
-                            statusEl.innerText = "Datenbank verbunden. Aktueller Spielstand geladen.";
-                            statusEl.style.color = "#2ed573";
-                        }
-                    } else { sync(); }
+                    let currentState = snapshot.exists() ? snapshot.val() : state;
+
+                    // 2. DAS IST DER NEUE SICHERHEITSTEST: 
+                    // Wir versuchen unsichtbar einen kleinen "Ping" in die Datenbank zu schreiben,
+                    // WÄHREND das Login-Fenster noch offen ist.
+                    update(ref(db, 'match/'), { _ping: Date.now() })
+                        .then(() => {
+                            // ERFOLG! Firebase hat das Schreiben erlaubt.
+                            // JETZT blendet sich das Login-Fenster aus und das Panel ein.
+                            state = { ...state, ...currentState };
+                            document.getElementById('input-team1').value = state.t1;
+                            document.getElementById('input-flag1').value = state.f1;
+                            document.getElementById('input-team2').value = state.t2;
+                            document.getElementById('input-flag2').value = state.f2;
+                            
+                            document.getElementById('login-screen').style.display = 'none';
+                            document.getElementById('main-app').style.display = 'flex';
+                            enableHotkeys();
+
+                            const statusEl = document.getElementById('status');
+                            if (statusEl) {
+                                statusEl.innerText = "Datenbank verbunden. Admin-Rechte bestätigt.";
+                                statusEl.style.color = "#2ed573";
+                            }
+                        })
+                        .catch((error) => { 
+                            // FEHLER! Firebase blockt den Schreibbefehl.
+                            // Wir zeigen sofort den Error-Screen. Das Panel wurde nie geladen.
+                            showErrorScreen("Der Server hat blockiert. UID: " + user.uid); 
+                        });
+
                 }).catch((error) => { 
-                    showErrorScreen(); 
+                    showErrorScreen("Fehler beim Lesen der Datenbank."); 
                 });
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
-                document.getElementById('uid-display').innerText = "";
                 
                 if (loginBtn) {
                     loginBtn.innerText = "Mit Google einloggen";
@@ -201,7 +201,7 @@
             }
         });
 
-        function showErrorScreen() {
+        function showErrorScreen(reasonMsg) {
             document.getElementById('login-screen').style.display = 'none';
             const mainApp = document.getElementById('main-app');
             mainApp.style.display = 'flex';
@@ -209,7 +209,8 @@
             mainApp.innerHTML = `
                 <div style="text-align: center; width: 100%; padding: 40px 0;">
                     <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
-                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account besitzt keine Admin-Rechte.</p>
+                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 15px;">Dein Account besitzt keine Admin-Rechte.</p>
+                    <p style="color: #57606f; font-size: 12px; margin-bottom: 40px; font-family: monospace;">${reasonMsg}</p>
                     <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
                 </div>
             `;
@@ -226,7 +227,7 @@
                     statusEl.style.color = "#2ed573";
                     setTimeout(() => { statusEl.innerText = "Datenbank aktiv. Änderungen live."; }, 2000);
                 }
-            }).catch((error) => { showErrorScreen(); });
+            }).catch((error) => { showErrorScreen("Verbindung verloren."); });
         }
 
         window.updateTeams = () => {
