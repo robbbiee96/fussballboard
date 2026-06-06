@@ -102,7 +102,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        // WICHTIG: onValue wurde hier importiert
         import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
@@ -121,12 +120,10 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        // NEU: Holt sich kontinuierlich die exakte Server-Zeitverzögerung
         let serverOffset = 0;
         onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
             serverOffset = snap.val() || 0;
         });
-        // Funktion berechnet lokale Zeit + Server-Offset für eine 100% einheitliche Zeit
         const getSyncedTime = () => Date.now() + serverOffset;
 
         let state = {
@@ -145,13 +142,24 @@
         }
 
         onAuthStateChanged(auth, (user) => {
+            const loginBtn = document.getElementById('btn-login');
+            
             if (user) {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-app').style.display = 'flex';
+                // UI Update: Zeige dem Nutzer, dass im Hintergrund geprüft wird
+                if (loginBtn) {
+                    loginBtn.innerText = "Prüfe Berechtigungen...";
+                    loginBtn.style.background = "#fbc531"; // Gelbes Feedback
+                    loginBtn.style.color = "#111";
+                    loginBtn.disabled = true;
+                }
                 
                 enableHotkeys();
                 
                 get(ref(db, 'match/')).then((snapshot) => {
+                    // ERFOLG: Jetzt erst das Login-Fenster ausblenden und das Panel zeigen
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-app').style.display = 'flex';
+                    
                     if (snapshot.exists()) {
                         state = { ...state, ...snapshot.val() };
                         document.getElementById('input-team1').value = state.t1;
@@ -164,16 +172,31 @@
                             statusEl.style.color = "#2ed573";
                         }
                     } else { sync(); }
-                }).catch((error) => { showErrorScreen(); });
+                }).catch((error) => { 
+                    // FEHLER: Direkt den Error-Screen zeigen, Panel bleibt versteckt
+                    showErrorScreen(); 
+                });
             } else {
+                // Reset, falls der Nutzer nicht eingeloggt ist
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
                 document.getElementById('uid-display').innerText = "";
+                
+                if (loginBtn) {
+                    loginBtn.innerText = "Mit Google einloggen";
+                    loginBtn.style.background = "#ffffff";
+                    loginBtn.style.color = "#333";
+                    loginBtn.disabled = false;
+                }
             }
         });
 
         function showErrorScreen() {
+            // Login-Screen ausblenden und stattdessen die Error-Ansicht laden
+            document.getElementById('login-screen').style.display = 'none';
             const mainApp = document.getElementById('main-app');
+            mainApp.style.display = 'flex';
+            
             mainApp.innerHTML = `
                 <div style="text-align: center; width: 100%; padding: 40px 0;">
                     <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
