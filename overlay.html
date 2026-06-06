@@ -6,13 +6,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Roboto+Mono:wght@700&display=swap');
 
-        /* Hintergrund auf komplett transparent gesetzt */
         body { margin: 0; font-family: 'Montserrat', sans-serif; background-color: transparent; overflow: hidden; }
         
         .overlay { display: flex; flex-direction: column; align-items: center; padding-top: 40px; }
-        
         .scoreboard-container { filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.8)); display: flex; flex-direction: column; align-items: center; }
-        
         .scoreboard { display: flex; background: linear-gradient(180deg, rgba(35, 35, 45, 1) 0%, rgba(15, 15, 20, 1) 100%); border-radius: 12px; border: 1px solid #555; height: 75px; color: white; }
         
         .team-box { display: flex; align-items: center; width: 240px; padding: 0 25px; }
@@ -79,6 +76,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // NEU: Server-Zeit auch im Overlay abgleichen
+        let serverOffset = 0;
+        onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+            serverOffset = snap.val() || 0;
+        });
+        const getSyncedTime = () => Date.now() + serverOffset;
+
         let matchState = null;
         let previousState = null;
 
@@ -113,6 +117,9 @@
         });
 
         function formatTime(totalSeconds) {
+            // Hartes Sicherheitsnetz: Verhindert die Darstellung negativer Zahlen
+            if (totalSeconds < 0) totalSeconds = 0; 
+            
             let m = Math.floor(totalSeconds / 60);
             let s = totalSeconds % 60;
             return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
@@ -126,7 +133,6 @@
             const statusTextEl = document.getElementById('status-text');
             const stoppageTimeEl = document.getElementById('stoppage-time');
 
-            // Wenn das Spiel auf Halbzeitpause oder Ende steht
             if (matchState.mode !== "normal") {
                 dot.style.display = 'none';
                 mainTimeEl.style.display = 'none';
@@ -136,7 +142,6 @@
                 return;
             }
 
-            // Normaler Timer-Modus
             statusTextEl.style.display = 'none';
             dot.style.display = 'block';
             mainTimeEl.style.display = 'block';
@@ -146,17 +151,18 @@
 
             let totalSec = matchState.baseSec;
             if (matchState.running) {
-                totalSec += Math.floor((Date.now() - matchState.startTs) / 1000);
+                // Zeitberechnung nun mit der genauen Server-Zeit
+                let elapsed = Math.floor((getSyncedTime() - matchState.startTs) / 1000);
+                if (elapsed < 0) elapsed = 0; // Zusätzliche Sperre
+                totalSec += elapsed;
             }
 
             let isStoppage = false;
             let stoppageSec = 0;
             let displaySec = totalSec;
 
-            // Sicherstellen, dass die Halbzeit aus der DB immer eine saubere Zahl ist
             const currentHalf = parseInt(matchState.half) || 1;
 
-            // Logik für Nachspielzeit
             if (currentHalf === 1 && totalSec >= 45 * 60) {
                 isStoppage = true; 
                 stoppageSec = totalSec - 45 * 60; 
