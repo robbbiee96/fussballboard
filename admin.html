@@ -2,28 +2,58 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Scoreboard Admin</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&display=swap');
 
         body { margin: 0; font-family: 'Montserrat', sans-serif; background-color: #1a1a24; -webkit-font-smoothing: antialiased; }
+        
+        /* Basis-Layout für PC */
         .controls { margin: 40px auto; background: #23232f; padding: 25px; border-radius: 12px; color: white; display: flex; flex-wrap: wrap; gap: 12px; max-width: 850px; justify-content: center; border: 2px solid #111; box-shadow: 0 20px 40px rgba(0,0,0,0.8); }
         .controls h3 { width: 100%; text-align: center; margin-top: 0; color: #a5a5b9; font-size: 13px; letter-spacing: 2px; }
-        .controls input { padding: 10px; font-size: 16px; text-align: center; border-radius: 6px; background: #1a1a24; color: white; font-weight: bold; border: 1px solid #555;}
+        .controls input { padding: 10px; font-size: 16px; text-align: center; border-radius: 6px; background: #1a1a24; color: white; font-weight: bold; border: 1px solid #555; box-sizing: border-box; }
         .controls input[type="number"]::-webkit-outer-spin-button, .controls input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .controls input[type="number"] { -moz-appearance: textfield; }
-        button { padding: 12px 18px; font-size: 14px; cursor: pointer; border: none; border-radius: 6px; background: #2ed573; font-weight: bold; text-transform: uppercase; }
-        .btn-main { padding: 16px 24px; font-size: 16px; min-width: 140px; }
+        
+        button { padding: 12px 18px; font-size: 14px; cursor: pointer; border: none; border-radius: 6px; background: #2ed573; font-weight: bold; text-transform: uppercase; transition: transform 0.1s, opacity 0.2s; }
+        button:active { transform: scale(0.96); opacity: 0.8; }
+        .btn-main { padding: 16px 24px; font-size: 16px; min-width: 140px; flex: 1; }
         .btn-large { width: 100%; max-width: 660px; padding: 20px; font-size: 20px; letter-spacing: 1px; }
         .btn-red { background: #ff4757; color: white; } .btn-blue { background: #1e90ff; color: white; } .btn-gray { background: #57606f; color: white; } .btn-yellow { background: #fbc531; color: #111; }
+        
         hr { width: 100%; border: none; border-top: 1px solid #3a3a4c; margin: 12px 0; }
+        
         .control-group { display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%; flex-wrap: wrap;}
+        .team-group { display: flex; gap: 10px; align-items: flex-end; }
         .input-box { display: flex; flex-direction: column; gap: 4px; }
         .input-box label { font-size: 11px; color: #8a8a9e; text-transform: uppercase; }
-        #status { text-align: center; color: #8a8a9e; font-size: 12px; width: 100%; margin-top: 10px; }
+        #status { text-align: center; color: #8a8a9e; font-size: 12px; width: 100%; margin-top: 10px; min-height: 15px; }
         
-        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 20px; text-align: center; box-sizing: border-box; }
         #main-app { display: none; }
+
+        /* HANDY OPTIMIERUNG (Wird aktiv, wenn der Bildschirm schmaler als 768px ist) */
+        @media (max-width: 768px) {
+            .controls { margin: 15px; padding: 15px; gap: 15px; }
+            button { padding: 16px; font-size: 15px; width: 100%; } /* Buttons werden formatfüllend und höher für dicke Daumen */
+            
+            .control-group { gap: 10px; flex-direction: column; width: 100%; }
+            .control-group.row-layout { flex-direction: row; flex-wrap: wrap; }
+            .control-group.row-layout button { flex: 1 1 45%; } /* Tor-Buttons nebeneinander */
+            
+            .team-group { width: 100%; }
+            .team-group .input-box:first-child { flex: 2; } /* Name kriegt mehr Platz */
+            .team-group .input-box:last-child { flex: 1; } /* Flagge kriegt weniger Platz */
+            .team-group input { width: 100% !important; }
+            
+            .btn-main { min-width: 100%; }
+            .btn-large { padding: 20px; font-size: 18px; }
+            
+            .time-setter { flex-direction: row; width: 100%; }
+            .time-setter .input-box { flex: 1; }
+            .time-setter input { width: 100% !important; }
+        }
     </style>
 </head>
 <body>
@@ -31,45 +61,58 @@
     <div id="login-screen">
         <h2 style="color: white; font-family: 'Montserrat', sans-serif;">Moderator Login</h2>
         <p style="color: #8a8a9e; margin-bottom: 20px;">Bitte autorisiere dich, um das Scoreboard zu steuern.</p>
-        <button id="btn-login" style="background: #ffffff; color: #333; padding: 12px 24px; font-size: 16px;">Mit Google einloggen</button>
-        <div id="uid-display" style="color: #ff4757; margin-top: 20px; font-family: monospace; font-size: 14px;"></div>
+        <button id="btn-login" style="background: #ffffff; color: #333; padding: 15px 30px; font-size: 16px; border-radius: 8px;">Mit Google einloggen</button>
+        <div id="uid-display" style="color: #ff4757; margin-top: 20px; font-family: monospace; font-size: 14px; word-break: break-all;"></div>
     </div>
 
     <div id="main-app" class="controls">
-        <h3>Stream Deck Control Panel</h3>
+        <h3>Stream Deck / Mobile Control Panel</h3>
+        
         <div class="control-group">
-            <div class="input-box"><label>Heim</label><input type="text" id="input-team1" value="GER" style="width: 90px;"></div>
-            <div class="input-box"><label>Flagge</label><input type="text" id="input-flag1" value="de" style="width: 40px;"></div>
-            <div class="input-box"><label>Gast</label><input type="text" id="input-team2" value="FIN" style="width: 90px;"></div>
-            <div class="input-box"><label>Flagge</label><input type="text" id="input-flag2" value="fi" style="width: 40px;"></div>
-            <button class="btn-gray" onclick="updateTeams()" style="margin-top: 16px;">Update</button>
+            <div class="team-group">
+                <div class="input-box"><label>Heim</label><input type="text" id="input-team1" value="GER" style="width: 120px;"></div>
+                <div class="input-box"><label>Flagge</label><input type="text" id="input-flag1" value="de" style="width: 50px;"></div>
+            </div>
+            <div class="team-group">
+                <div class="input-box"><label>Gast</label><input type="text" id="input-team2" value="FIN" style="width: 120px;"></div>
+                <div class="input-box"><label>Flagge</label><input type="text" id="input-flag2" value="fi" style="width: 50px;"></div>
+            </div>
+            <button class="btn-gray" onclick="updateTeams()">Teams Update</button>
         </div>
+        
         <hr>
-        <div class="control-group">
+        
+        <div class="control-group row-layout">
             <button class="btn-blue" onclick="changeScore(1, 1)">Tor Heim [1]</button>
-            <button class="btn-red" onclick="changeScore(1, -1)">-1 [5]</button>
-            <div style="width: 20px;"></div>
+            <button class="btn-red" onclick="changeScore(1, -1)">-1 Heim [5]</button>
+            
             <button class="btn-blue" onclick="changeScore(2, 1)">Tor Gast [2]</button>
-            <button class="btn-red" onclick="changeScore(2, -1)">-1 [6]</button>
+            <button class="btn-red" onclick="changeScore(2, -1)">-1 Gast [6]</button>
         </div>
+        
         <hr>
+        
         <div class="control-group">
             <button class="btn-yellow btn-large" onclick="toggleTimer()">Start / Pause [Leertaste]</button>
         </div>
-        <div class="control-group" style="margin-top: 10px;">
+        
+        <div class="control-group row-layout" style="margin-top: 5px;">
             <button class="btn-main" onclick="setHalf(1)">Start 1. HZ [T]</button>
             <button class="btn-blue btn-main" onclick="setMode('halftime')">Halbzeit [H]</button>
             <button class="btn-main" onclick="setHalf(2)">Start 2. HZ [Z]</button>
             <button class="btn-red btn-main" onclick="setMode('end')">Spielende [J]</button>
         </div>
-        <div class="control-group" style="margin-top: 10px;">
-            <div class="input-box"><label>Min</label><input type="number" id="input-min" value="0" min="0" max="90" style="width: 70px;"></div>
-            <div class="input-box"><label>Sek</label><input type="number" id="input-sec" value="0" min="0" max="59" style="width: 70px;"></div>
-            <button class="btn-gray" onclick="setManualTime()" style="margin-top: 16px;">Zeit setzen</button>
+        
+        <div class="control-group time-setter" style="margin-top: 10px;">
+            <div class="input-box"><label>Minuten</label><input type="number" id="input-min" value="0" min="0" max="90" style="width: 80px;"></div>
+            <div class="input-box"><label>Sekunden</label><input type="number" id="input-sec" value="0" min="0" max="59" style="width: 80px;"></div>
+            <button class="btn-gray" onclick="setManualTime()">Zeit fixieren</button>
         </div>
-        <div class="control-group" style="margin-top: 20px; width: 100%;">
-            <button class="btn-gray" id="btn-logout" style="width: 100%; max-width: 660px; background: #444;">Ausloggen</button>
+        
+        <div class="control-group" style="margin-top: 20px;">
+            <button class="btn-gray" id="btn-logout" style="background: #444;">Ausloggen</button>
         </div>
+        
         <div id="status">Verbinde mit Datenbank...</div>
     </div>
 
@@ -112,17 +155,13 @@
             if (user) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'flex';
-                console.log("Deine UID lautet: " + user.uid);
                 
                 enableHotkeys();
                 
-                // Zuerst aktuelle Daten aus der DB holen, anstatt sofort zu überschreiben
                 get(ref(db, 'match/')).then((snapshot) => {
                     if (snapshot.exists()) {
-                        // Den lokalen State mit den Daten aus Firebase aktualisieren
                         state = { ...state, ...snapshot.val() };
                         
-                        // Input-Felder mit den geladenen Namen/Flaggen füllen
                         document.getElementById('input-team1').value = state.t1;
                         document.getElementById('input-flag1').value = state.f1;
                         document.getElementById('input-team2').value = state.t2;
@@ -134,7 +173,6 @@
                             statusEl.style.color = "#2ed573";
                         }
                     } else {
-                        // Wenn die Datenbank komplett leer ist, pushen wir einmalig den Start-State
                         sync();
                     }
                 }).catch((error) => {
@@ -183,26 +221,31 @@
         window.changeScore = (team, amount) => {
             if (team === 1) state.s1 = Math.max(0, state.s1 + amount);
             if (team === 2) state.s2 = Math.max(0, state.s2 + amount); sync();
+            navigator.vibrate && navigator.vibrate(50); // Kleines haptisches Feedback fürs Handy
         };
 
         window.toggleTimer = () => {
             if (state.running) { state.baseSec += Math.floor((Date.now() - state.startTs) / 1000); state.running = false; } 
             else { state.startTs = Date.now(); state.running = true; if(state.mode !== "normal") state.mode = "normal"; } sync();
+            navigator.vibrate && navigator.vibrate(50);
         };
 
         window.setHalf = (half) => {
             state.half = half; state.baseSec = (half === 1) ? 0 : 45 * 60; state.startTs = Date.now(); state.running = true; state.mode = "normal"; sync();
+            navigator.vibrate && navigator.vibrate(50);
         };
 
         window.setMode = (mode) => {
             if (state.running) { state.baseSec += Math.floor((Date.now() - state.startTs) / 1000); state.running = false; }
             state.mode = mode; sync();
+            navigator.vibrate && navigator.vibrate(50);
         };
 
         window.setManualTime = () => {
             let m = parseInt(document.getElementById('input-min').value) || 0; let s = parseInt(document.getElementById('input-sec').value) || 0;
             if (m > 90) m = 90; if (m < 0) m = 0; if (s > 59) s = 59; if (s < 0) s = 0;
             state.baseSec = (m * 60) + s; state.startTs = Date.now(); if(state.mode !== "normal") state.mode = "normal"; sync();
+            navigator.vibrate && navigator.vibrate(50);
         };
 
         window.enableHotkeys = () => {
