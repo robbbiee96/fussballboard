@@ -101,7 +101,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        // NEU: 'update' importiert für den Test-Schreibvorgang
         import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
@@ -152,17 +151,11 @@
                     loginBtn.disabled = true;
                 }
                 
-                // 1. Zuerst lesen wir den aktuellen Stand (das darf wegen .read: true jeder)
                 get(ref(db, 'match/')).then((snapshot) => {
                     let currentState = snapshot.exists() ? snapshot.val() : state;
 
-                    // 2. DAS IST DER NEUE SICHERHEITSTEST: 
-                    // Wir versuchen unsichtbar einen kleinen "Ping" in die Datenbank zu schreiben,
-                    // WÄHREND das Login-Fenster noch offen ist.
                     update(ref(db, 'match/'), { _ping: Date.now() })
                         .then(() => {
-                            // ERFOLG! Firebase hat das Schreiben erlaubt.
-                            // JETZT blendet sich das Login-Fenster aus und das Panel ein.
                             state = { ...state, ...currentState };
                             document.getElementById('input-team1').value = state.t1;
                             document.getElementById('input-flag1').value = state.f1;
@@ -180,13 +173,11 @@
                             }
                         })
                         .catch((error) => { 
-                            // FEHLER! Firebase blockt den Schreibbefehl.
-                            // Wir zeigen sofort den Error-Screen. Das Panel wurde nie geladen.
-                            showErrorScreen("Der Server hat blockiert. UID: " + user.uid); 
+                            showErrorScreen(user.uid); 
                         });
 
                 }).catch((error) => { 
-                    showErrorScreen("Fehler beim Lesen der Datenbank."); 
+                    showErrorScreen(user.uid); 
                 });
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
@@ -201,7 +192,8 @@
             }
         });
 
-        function showErrorScreen(reasonMsg) {
+        // HIER WURDE DER TEXT ANGEPASST
+        function showErrorScreen(uidParam) {
             document.getElementById('login-screen').style.display = 'none';
             const mainApp = document.getElementById('main-app');
             mainApp.style.display = 'flex';
@@ -209,8 +201,11 @@
             mainApp.innerHTML = `
                 <div style="text-align: center; width: 100%; padding: 40px 0;">
                     <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
-                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 15px;">Dein Account besitzt keine Admin-Rechte.</p>
-                    <p style="color: #57606f; font-size: 12px; margin-bottom: 40px; font-family: monospace;">${reasonMsg}</p>
+                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 25px;">Dein Account besitzt keine Admin-Rechte.</p>
+                    <p style="color: #a5a5b9; font-size: 14px; margin-bottom: 40px; line-height: 1.6;">
+                        Um Rechte zu erhalten wende Dich an <strong style="color: #ffffff;">@Robbbiee96</strong> unter Angabe deiner UID:<br>
+                        <span style="display: inline-block; margin-top: 15px; padding: 12px 15px; background: #1a1a24; border: 1px solid #333; border-radius: 6px; color: #ff4757; font-family: monospace; font-size: 15px; word-break: break-all; letter-spacing: 1px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">${uidParam || "Keine UID gefunden"}</span>
+                    </p>
                     <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
                 </div>
             `;
@@ -227,7 +222,9 @@
                     statusEl.style.color = "#2ed573";
                     setTimeout(() => { statusEl.innerText = "Datenbank aktiv. Änderungen live."; }, 2000);
                 }
-            }).catch((error) => { showErrorScreen("Verbindung verloren."); });
+            }).catch((error) => { 
+                showErrorScreen(auth.currentUser ? auth.currentUser.uid : "Unbekannt"); 
+            });
         }
 
         window.updateTeams = () => {
