@@ -120,6 +120,13 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
+        // 🛡️ FRONTEND WHITELIST: Hier sind alle UIDs definiert, die das Panel sehen dürfen
+        const allowedUIDs = [
+            "KER5HiMngMNFgZRaczpq1GAkUuR2",
+            "8ZRy9NwuW3UAFDc1YkC77JY3lpm2",
+            "TZPkVlm2MofHRaPboq9l0Pgr8jN2"
+        ];
+
         let serverOffset = 0;
         onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
             serverOffset = snap.val() || 0;
@@ -145,10 +152,16 @@
             const loginBtn = document.getElementById('btn-login');
             
             if (user) {
-                // UI Update: Zeige dem Nutzer, dass im Hintergrund geprüft wird
+                // 🛑 HARTE SPERRE VOR DEM LADEN
+                // Prüfen, ob der eingeloggte Account in deiner Whitelist steht
+                if (!allowedUIDs.includes(user.uid)) {
+                    showErrorScreen();
+                    return; // Beendet die Ausführung sofort, das Panel bleibt unsichtbar
+                }
+
                 if (loginBtn) {
-                    loginBtn.innerText = "Prüfe Berechtigungen...";
-                    loginBtn.style.background = "#fbc531"; // Gelbes Feedback
+                    loginBtn.innerText = "Lade Scoreboard...";
+                    loginBtn.style.background = "#fbc531";
                     loginBtn.style.color = "#111";
                     loginBtn.disabled = true;
                 }
@@ -156,7 +169,6 @@
                 enableHotkeys();
                 
                 get(ref(db, 'match/')).then((snapshot) => {
-                    // ERFOLG: Jetzt erst das Login-Fenster ausblenden und das Panel zeigen
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('main-app').style.display = 'flex';
                     
@@ -173,11 +185,9 @@
                         }
                     } else { sync(); }
                 }).catch((error) => { 
-                    // FEHLER: Direkt den Error-Screen zeigen, Panel bleibt versteckt
                     showErrorScreen(); 
                 });
             } else {
-                // Reset, falls der Nutzer nicht eingeloggt ist
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
                 document.getElementById('uid-display').innerText = "";
@@ -192,7 +202,6 @@
         });
 
         function showErrorScreen() {
-            // Login-Screen ausblenden und stattdessen die Error-Ansicht laden
             document.getElementById('login-screen').style.display = 'none';
             const mainApp = document.getElementById('main-app');
             mainApp.style.display = 'flex';
@@ -200,7 +209,7 @@
             mainApp.innerHTML = `
                 <div style="text-align: center; width: 100%; padding: 40px 0;">
                     <h2 style="color: #ff4757; font-size: 32px; margin-bottom: 10px; font-family: 'Montserrat', sans-serif;">ZUGRIFF VERWEIGERT</h2>
-                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account ist nicht freigeschaltet.</p>
+                    <p style="color: #8a8a9e; font-size: 16px; margin-bottom: 40px;">Dein Google-Account besitzt keine Admin-Rechte.</p>
                     <button id="btn-logout-error" style="background: #444; color: white; padding: 15px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; text-transform: uppercase;">Zurück zum Login</button>
                 </div>
             `;
