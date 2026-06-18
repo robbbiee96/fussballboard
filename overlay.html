@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Scoreboard Overlay</title>
+    <title>WM 2026 - TV Overlay Left</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto+Mono:wght@700&display=swap');
 
@@ -23,21 +23,51 @@
             filter: drop-shadow(0px 8px 15px rgba(0,0,0,0.5));
         }
 
-        /* --- DER HAUPTBALKEN (Links bis Mitte) --- */
+        /* --- DER TIMER (Jetzt Links angedockt) --- */
+        .timer-container {
+            background: #ffffff;
+            height: 48px;
+            /* Extra Padding rechts, damit die Pille sauber unter den schwarzen Balken rutscht */
+            padding: 0 35px 0 20px; 
+            border-radius: 24px 0 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 70px;
+            margin-right: -25px; /* Zieht den schwarzen Balken über die Timer-Pille */
+            z-index: 1;
+        }
+
+        .time-text {
+            font-size: 26px;
+            font-weight: 900;
+            color: #000;
+        }
+
+        .stoppage-text {
+            color: #ff4757;
+            font-size: 20px;
+            font-weight: 900;
+            margin-left: 6px;
+            display: none;
+        }
+
+        /* --- DER HAUPTBALKEN (Jetzt Rechts daneben) --- */
         .main-bug-wrapper {
             background: linear-gradient(90deg, #ff4757, #5ee0b1, #b862ff);
-            padding: 0 0 3px 0;
-            border-radius: 25px 0 0 25px;
+            /* TV-Linie: 2px Rand links, unten und rechts */
+            padding: 0 2px 3px 2px; 
+            border-radius: 26px; 
             z-index: 2;
         }
 
         .main-black-bar {
             background: #0a0a0a;
             height: 48px;
-            border-radius: 23px 0 0 23px;
+            border-radius: 24px;
             display: flex;
             align-items: center;
-            padding: 0 15px 0 20px;
+            padding: 0 15px;
             position: relative;
         }
 
@@ -107,40 +137,6 @@
             object-fit: contain;
         }
 
-        /* --- DER TIMER (Rechts angedockt) --- */
-        .timer-wrapper {
-            background: linear-gradient(90deg, #b862ff, #b862ff);
-            padding: 0 2px 3px 0;
-            border-radius: 0 25px 25px 0;
-            z-index: 1;
-            margin-left: -2px;
-        }
-
-        .timer-white-box {
-            background: #ffffff;
-            height: 48px;
-            padding: 0 25px 0 20px;
-            border-radius: 0 23px 23px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 80px;
-        }
-
-        .time-text {
-            font-size: 26px;
-            font-weight: 900;
-            color: #000;
-        }
-
-        .stoppage-text {
-            color: #ff4757;
-            font-size: 20px;
-            font-weight: 900;
-            margin-left: 6px;
-            display: none;
-        }
-
         /* TOR ANIMATION */
         @keyframes goalFlash { 
             0% { background: #5ee0b1; color: #000; } 
@@ -155,6 +151,13 @@
 
     <div class="bug-container">
         
+        <!-- TIMER PILLE JETZT LINKS -->
+        <div class="timer-container">
+            <span class="time-text" id="main-time">00:00</span>
+            <span class="stoppage-text" id="stoppage-time">+0:00</span>
+        </div>
+
+        <!-- HAUPT-SCOREBOARD RECHTS -->
         <div class="main-bug-wrapper">
             <div class="main-black-bar">
                 
@@ -178,13 +181,6 @@
                     <img src="https://flagcdn.com/sn.svg" class="flag" id="flag2">
                 </div>
 
-            </div>
-        </div>
-
-        <div class="timer-wrapper">
-            <div class="timer-white-box">
-                <span class="time-text" id="main-time">00:00</span>
-                <span class="stoppage-text" id="stoppage-time">+0:00</span>
             </div>
         </div>
 
@@ -272,7 +268,6 @@
 
             timeEl.innerText = formatTime(display);
             if (stop > 0) {
-                // Hier ist der Fix: Zeigt jetzt live die Sekunden mit an (z.B. +0:05 oder +1:12)
                 let stopM = Math.floor(stop / 60);
                 let stopS = stop % 60;
                 stopEl.innerText = "+" + stopM + ":" + (stopS < 10 ? "0" : "") + stopS;
