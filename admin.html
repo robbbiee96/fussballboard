@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="de">
-    <!-- wake up github -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -20,11 +19,13 @@
         button:active { transform: scale(0.96); opacity: 0.8; }
         .btn-main { padding: 16px 24px; font-size: 16px; min-width: 140px; flex: 1; }
         .btn-large { width: 100%; max-width: 660px; padding: 20px; font-size: 20px; letter-spacing: 1px; }
+        
+        .btn-green { background: #2ed573; color: #111; } 
         .btn-red { background: #ff4757; color: white; } 
         .btn-blue { background: #1e90ff; color: white; } 
         .btn-gray { background: #57606f; color: white; } 
         .btn-yellow { background: #fbc531; color: #111; }
-        .btn-purple { background: #b862ff; color: white; } /* Neu für Elfmeter/Verlängerung */
+        .btn-purple { background: #b862ff; color: white; }
         
         hr { width: 100%; border: none; border-top: 1px solid #3a3a4c; margin: 12px 0; }
         
@@ -33,6 +34,12 @@
         .input-box { display: flex; flex-direction: column; gap: 4px; }
         .input-box label { font-size: 11px; color: #8a8a9e; text-transform: uppercase; }
         #status { text-align: center; color: #8a8a9e; font-size: 12px; width: 100%; margin-top: 10px; min-height: 15px; }
+
+        /* Preview Box für Elfmeter */
+        .pen-preview-container { display: flex; gap: 5px; justify-content: center; margin-top: 12px; height: 14px; }
+        .pen-dot-prev { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #555; background: transparent; }
+        .pen-dot-prev.scored { background: #2ed573; border-color: #2ed573; }
+        .pen-dot-prev.missed { background: #ff4757; border-color: #ff4757; }
         
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 20px; text-align: center; box-sizing: border-box; }
         #main-app { display: none; }
@@ -79,7 +86,6 @@
         
         <hr>
         
-        <!-- REGULÄRE TORE -->
         <div class="control-group row-layout">
             <button class="btn-blue" onclick="changeScore(1, 1)">Tor Heim [1]</button>
             <button class="btn-red" onclick="changeScore(1, -1)">-1 Heim [5]</button>
@@ -87,12 +93,25 @@
             <button class="btn-red" onclick="changeScore(2, -1)">-1 Gast [6]</button>
         </div>
         
-        <!-- ELFMETERSCHIEßEN TORE (NEU) -->
         <div class="control-group row-layout" style="margin-top: 5px;">
-            <button class="btn-purple" onclick="changePenalty(1, 1)">Pen Heim +1</button>
-            <button class="btn-gray" onclick="changePenalty(1, -1)">-1 Pen</button>
-            <button class="btn-purple" onclick="changePenalty(2, 1)">Pen Gast +1</button>
-            <button class="btn-gray" onclick="changePenalty(2, -1)">-1 Pen</button>
+            <div style="flex: 1; background: #1e1e28; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label style="color:#fbc531; font-size: 12px; font-weight: bold; display: block; text-align: center; margin-bottom: 10px;">ELFMETER HEIM</label>
+                <div style="display: flex; gap: 5px; justify-content: center;">
+                    <button class="btn-green" style="padding: 10px;" onclick="addPenaltyShot(1, 1)">✅ Treffer</button>
+                    <button class="btn-red" style="padding: 10px;" onclick="addPenaltyShot(1, 0)">❌ Vorbei</button>
+                    <button class="btn-gray" style="padding: 10px;" onclick="undoPenaltyShot(1)">↩️</button>
+                </div>
+                <div class="pen-preview-container" id="p1-prev"></div>
+            </div>
+            <div style="flex: 1; background: #1e1e28; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label style="color:#fbc531; font-size: 12px; font-weight: bold; display: block; text-align: center; margin-bottom: 10px;">ELFMETER GAST</label>
+                <div style="display: flex; gap: 5px; justify-content: center;">
+                    <button class="btn-green" style="padding: 10px;" onclick="addPenaltyShot(2, 1)">✅ Treffer</button>
+                    <button class="btn-red" style="padding: 10px;" onclick="addPenaltyShot(2, 0)">❌ Vorbei</button>
+                    <button class="btn-gray" style="padding: 10px;" onclick="undoPenaltyShot(2)">↩️</button>
+                </div>
+                <div class="pen-preview-container" id="p2-prev"></div>
+            </div>
         </div>
 
         <hr>
@@ -101,7 +120,6 @@
             <button class="btn-yellow btn-large" onclick="toggleTimer()">Start / Pause [Leertaste]</button>
         </div>
         
-        <!-- STANDARD SPIELPHASEN -->
         <div class="control-group row-layout" style="margin-top: 5px;">
             <button class="btn-main" onclick="setHalf(1)">Start 1. HZ [T]</button>
             <button class="btn-blue btn-main" onclick="setMode('ht')">Halbzeit [H]</button>
@@ -109,12 +127,11 @@
             <button class="btn-red btn-main" onclick="setMode('end')">Spielende [J]</button>
         </div>
 
-        <!-- KO-PHASEN (NEU) -->
         <div class="control-group row-layout" style="margin-top: 5px;">
             <button class="btn-gray btn-main" onclick="setHalf(3)">Start 1. Verl.</button>
             <button class="btn-blue btn-main" onclick="setMode('ht_et')">HT Verl.</button>
             <button class="btn-gray btn-main" onclick="setHalf(4)">Start 2. Verl.</button>
-            <button class="btn-purple btn-main" onclick="setMode('pen')">Elfmeter</button>
+            <button class="btn-purple btn-main" onclick="setMode('pen')">Elfmeter Modus</button>
         </div>
 
         <div class="control-group time-setter" style="margin-top: 10px;">
@@ -156,10 +173,10 @@
         });
         const getSyncedTime = () => Date.now() + serverOffset;
 
-        // Erweitert um p1 und p2 für Penalties
+        // Arrays für die Schüsse (1=Treffer, 0=Verschossen)
         let state = {
-            t1: "GER", f1: "de", s1: 0, p1: 0,
-            t2: "FIN", f2: "fi", s2: 0, p2: 0,
+            t1: "GER", f1: "de", s1: 0, p1_shots: [],
+            t2: "FIN", f2: "fi", s2: 0, p2_shots: [],
             running: false, baseSec: 0, startTs: getSyncedTime(), half: 1, mode: "normal" 
         };
 
@@ -189,6 +206,9 @@
                     update(ref(db, 'match/'), { _ping: Date.now() })
                         .then(() => {
                             state = { ...state, ...currentState };
+                            if (!state.p1_shots) state.p1_shots = [];
+                            if (!state.p2_shots) state.p2_shots = [];
+
                             document.getElementById('input-team1').value = state.t1 || "GER";
                             document.getElementById('input-flag1').value = state.f1 || "de";
                             document.getElementById('input-team2').value = state.t2 || "FIN";
@@ -197,6 +217,9 @@
                             document.getElementById('login-screen').style.display = 'none';
                             document.getElementById('main-app').style.display = 'flex';
                             enableHotkeys();
+
+                            renderAdminDots('p1-prev', state.p1_shots);
+                            renderAdminDots('p2-prev', state.p2_shots);
 
                             const statusEl = document.getElementById('status');
                             if (statusEl) {
@@ -223,6 +246,32 @@
                 }
             }
         });
+
+        // Live-Update für das Admin-Panel
+        onValue(ref(db, 'match/'), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                renderAdminDots('p1-prev', data.p1_shots);
+                renderAdminDots('p2-prev', data.p2_shots);
+            }
+        });
+
+        function renderAdminDots(containerId, shotsArray) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            const shots = shotsArray || [];
+            const totalDots = Math.max(5, shots.length);
+            for (let i = 0; i < totalDots; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'pen-dot-prev';
+                if (i < shots.length) {
+                    if (shots[i] === 1) dot.classList.add('scored');
+                    else if (shots[i] === 0) dot.classList.add('missed');
+                }
+                container.appendChild(dot);
+            }
+        }
 
         function showErrorScreen(uidParam) {
             document.getElementById('login-screen').style.display = 'none';
@@ -269,10 +318,20 @@
             navigator.vibrate && navigator.vibrate(50);
         };
 
-        // Neu: Penalty Funktion
-        window.changePenalty = (team, amount) => {
-            if (team === 1) state.p1 = Math.max(0, (state.p1 || 0) + amount);
-            if (team === 2) state.p2 = Math.max(0, (state.p2 || 0) + amount); sync();
+        // Neue Funktion für das Punktesystem im Elfmeterschießen
+        window.addPenaltyShot = (team, result) => {
+            let shots = state['p' + team + '_shots'] || [];
+            shots.push(result);
+            state['p' + team + '_shots'] = shots;
+            sync();
+            navigator.vibrate && navigator.vibrate(50);
+        };
+
+        window.undoPenaltyShot = (team) => {
+            let shots = state['p' + team + '_shots'] || [];
+            if(shots.length > 0) shots.pop();
+            state['p' + team + '_shots'] = shots;
+            sync();
             navigator.vibrate && navigator.vibrate(50);
         };
 
@@ -282,13 +341,12 @@
             navigator.vibrate && navigator.vibrate(50);
         };
 
-        // Erweiterte Halbzeit-Logik
         window.setHalf = (half) => {
             state.half = half; 
             if (half === 1) state.baseSec = 0;
             else if (half === 2) state.baseSec = 45 * 60;
-            else if (half === 3) state.baseSec = 90 * 60;  /* 90 Minuten */
-            else if (half === 4) state.baseSec = 105 * 60; /* 105 Minuten */
+            else if (half === 3) state.baseSec = 90 * 60; 
+            else if (half === 4) state.baseSec = 105 * 60;
             
             state.startTs = getSyncedTime(); 
             state.running = true; 
