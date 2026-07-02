@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>WM 2026 - TV Overlay Left (KO Phase)</title>
+    <title>WM 2026 - TV Overlay </title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto+Mono:wght@700&display=swap');
 
@@ -82,12 +82,12 @@
         }
         .logo-pill img { height: 50px; object-fit: contain; }
 
-        /* --- ELFMETERSCHIEßEN PILLE (Neue Position & Layout) --- */
+        /* --- ELFMETERSCHIEßEN PILLE --- */
         .penalty-pill {
             position: absolute;
-            top: 56px; /* Weiter nach unten gezogen, damit das Logo nicht mehr überlappt */
+            top: 56px; 
             left: 50%;
-            transform: translateX(-35%); /* Leicht versetzt, um den Timer auszugleichen */
+            transform: translateX(-35%); 
             background: #0a0a0a;
             color: #ffffff;
             padding: 8px 25px;
@@ -104,7 +104,7 @@
 
         .pen-text { color: #fbc531; font-size: 15px; font-weight: 900; letter-spacing: 1px; }
 
-        /* Die neuen Elfmeter-Punkte */
+        /* Elfmeter-Punkte */
         .pen-dots-container { display: flex; gap: 6px; }
         .pen-dot {
             width: 12px; height: 12px; border-radius: 50%;
@@ -197,12 +197,10 @@
             el.classList.add('goal-anim');
         }
 
-        // Rendert die grünen/roten Punkte
         function renderPenDots(containerId, shotsArray) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
             const shots = shotsArray || [];
-            // Immer mindestens 5 Punkte anzeigen, ansonsten erweitern
             const totalDots = Math.max(5, shots.length);
 
             for (let i = 0; i < totalDots; i++) {
@@ -233,7 +231,6 @@
             document.getElementById('flag2').src = `https://flagcdn.com/${data.f2}.svg`;
             document.getElementById('score2').innerText = data.s2;
 
-            // Elfmeter-Logik aktualisieren
             renderPenDots('pen1-dots', data.p1_shots);
             renderPenDots('pen2-dots', data.p2_shots);
 
@@ -264,10 +261,37 @@
 
             if (matchState.mode !== "normal") {
                 stopEl.style.display = 'none';
+                
+                // Neue Penalty Auto-Win Logik
+                if (matchState.mode === 'pen') {
+                    const s1 = matchState.p1_shots || [];
+                    const s2 = matchState.p2_shots || [];
+                    
+                    const sum1 = s1.reduce((a, b) => a + b, 0);
+                    const sum2 = s2.reduce((a, b) => a + b, 0);
+                    
+                    const rem1 = Math.max(0, 5 - s1.length);
+                    const rem2 = Math.max(0, 5 - s2.length);
+
+                    let isDecided = false;
+                    
+                    // Check: Kann ein Team noch aufholen?
+                    if (sum1 > sum2 + rem2 || sum2 > sum1 + rem1) {
+                        isDecided = true;
+                    } 
+                    // Check: Sudden Death Entscheidung
+                    else if (s1.length >= 5 && s2.length >= 5 && s1.length === s2.length && sum1 !== sum2) {
+                        isDecided = true;
+                    }
+
+                    // Schaltet automatisch auf ENDE um, wenn mathematisch entschieden
+                    timeEl.innerText = isDecided ? "ENDE" : "PEN";
+                    return;
+                }
+                
                 if (matchState.mode === 'end') timeEl.innerText = "ENDE";
                 else if (matchState.mode === 'ht') timeEl.innerText = "HT";
                 else if (matchState.mode === 'ht_et') timeEl.innerText = "HT VERL.";
-                else if (matchState.mode === 'pen') timeEl.innerText = "PEN";
                 return;
             }
 
