@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scoreboard Admin</title>
+    <title>Scoreboard Admin - KO Phase</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&display=swap');
 
@@ -19,7 +19,11 @@
         button:active { transform: scale(0.96); opacity: 0.8; }
         .btn-main { padding: 16px 24px; font-size: 16px; min-width: 140px; flex: 1; }
         .btn-large { width: 100%; max-width: 660px; padding: 20px; font-size: 20px; letter-spacing: 1px; }
-        .btn-red { background: #ff4757; color: white; } .btn-blue { background: #1e90ff; color: white; } .btn-gray { background: #57606f; color: white; } .btn-yellow { background: #fbc531; color: #111; }
+        .btn-red { background: #ff4757; color: white; } 
+        .btn-blue { background: #1e90ff; color: white; } 
+        .btn-gray { background: #57606f; color: white; } 
+        .btn-yellow { background: #fbc531; color: #111; }
+        .btn-purple { background: #b862ff; color: white; } /* Neu für Elfmeter/Verlängerung */
         
         hr { width: 100%; border: none; border-top: 1px solid #3a3a4c; margin: 12px 0; }
         
@@ -71,31 +75,57 @@
             </div>
             <button class="btn-gray" onclick="updateTeams()">Teams Update</button>
         </div>
+        
         <hr>
+        
+        <!-- REGULÄRE TORE -->
         <div class="control-group row-layout">
             <button class="btn-blue" onclick="changeScore(1, 1)">Tor Heim [1]</button>
             <button class="btn-red" onclick="changeScore(1, -1)">-1 Heim [5]</button>
             <button class="btn-blue" onclick="changeScore(2, 1)">Tor Gast [2]</button>
             <button class="btn-red" onclick="changeScore(2, -1)">-1 Gast [6]</button>
         </div>
+        
+        <!-- ELFMETERSCHIEßEN TORE (NEU) -->
+        <div class="control-group row-layout" style="margin-top: 5px;">
+            <button class="btn-purple" onclick="changePenalty(1, 1)">Pen Heim +1</button>
+            <button class="btn-gray" onclick="changePenalty(1, -1)">-1 Pen</button>
+            <button class="btn-purple" onclick="changePenalty(2, 1)">Pen Gast +1</button>
+            <button class="btn-gray" onclick="changePenalty(2, -1)">-1 Pen</button>
+        </div>
+
         <hr>
+
         <div class="control-group">
             <button class="btn-yellow btn-large" onclick="toggleTimer()">Start / Pause [Leertaste]</button>
         </div>
+        
+        <!-- STANDARD SPIELPHASEN -->
         <div class="control-group row-layout" style="margin-top: 5px;">
             <button class="btn-main" onclick="setHalf(1)">Start 1. HZ [T]</button>
-            <button class="btn-blue btn-main" onclick="setMode('halftime')">Halbzeit [H]</button>
+            <button class="btn-blue btn-main" onclick="setMode('ht')">Halbzeit [H]</button>
             <button class="btn-main" onclick="setHalf(2)">Start 2. HZ [Z]</button>
             <button class="btn-red btn-main" onclick="setMode('end')">Spielende [J]</button>
         </div>
+
+        <!-- KO-PHASEN (NEU) -->
+        <div class="control-group row-layout" style="margin-top: 5px;">
+            <button class="btn-gray btn-main" onclick="setHalf(3)">Start 1. Verl.</button>
+            <button class="btn-blue btn-main" onclick="setMode('ht_et')">HT Verl.</button>
+            <button class="btn-gray btn-main" onclick="setHalf(4)">Start 2. Verl.</button>
+            <button class="btn-purple btn-main" onclick="setMode('pen')">Elfmeter</button>
+        </div>
+
         <div class="control-group time-setter" style="margin-top: 10px;">
-            <div class="input-box"><label>Minuten</label><input type="number" id="input-min" value="0" min="0" max="90" style="width: 80px;"></div>
+            <div class="input-box"><label>Minuten</label><input type="number" id="input-min" value="0" min="0" max="120" style="width: 80px;"></div>
             <div class="input-box"><label>Sekunden</label><input type="number" id="input-sec" value="0" min="0" max="59" style="width: 80px;"></div>
             <button class="btn-gray" onclick="setManualTime()">Zeit fixieren</button>
         </div>
+        
         <div class="control-group" style="margin-top: 20px;">
             <button class="btn-gray" id="btn-logout" style="background: #444;">Ausloggen</button>
         </div>
+        
         <div id="status">Verbinde mit Datenbank...</div>
     </div>
 
@@ -125,9 +155,10 @@
         });
         const getSyncedTime = () => Date.now() + serverOffset;
 
+        // Erweitert um p1 und p2 für Penalties
         let state = {
-            t1: "GER", f1: "de", s1: 0,
-            t2: "FIN", f2: "fi", s2: 0,
+            t1: "GER", f1: "de", s1: 0, p1: 0,
+            t2: "FIN", f2: "fi", s2: 0, p2: 0,
             running: false, baseSec: 0, startTs: getSyncedTime(), half: 1, mode: "normal" 
         };
 
@@ -157,10 +188,10 @@
                     update(ref(db, 'match/'), { _ping: Date.now() })
                         .then(() => {
                             state = { ...state, ...currentState };
-                            document.getElementById('input-team1').value = state.t1;
-                            document.getElementById('input-flag1').value = state.f1;
-                            document.getElementById('input-team2').value = state.t2;
-                            document.getElementById('input-flag2').value = state.f2;
+                            document.getElementById('input-team1').value = state.t1 || "GER";
+                            document.getElementById('input-flag1').value = state.f1 || "de";
+                            document.getElementById('input-team2').value = state.t2 || "FIN";
+                            document.getElementById('input-flag2').value = state.f2 || "fi";
                             
                             document.getElementById('login-screen').style.display = 'none';
                             document.getElementById('main-app').style.display = 'flex';
@@ -192,7 +223,6 @@
             }
         });
 
-        // HIER WURDE DER TEXT ANGEPASST
         function showErrorScreen(uidParam) {
             document.getElementById('login-screen').style.display = 'none';
             const mainApp = document.getElementById('main-app');
@@ -238,14 +268,31 @@
             navigator.vibrate && navigator.vibrate(50);
         };
 
+        // Neu: Penalty Funktion
+        window.changePenalty = (team, amount) => {
+            if (team === 1) state.p1 = Math.max(0, (state.p1 || 0) + amount);
+            if (team === 2) state.p2 = Math.max(0, (state.p2 || 0) + amount); sync();
+            navigator.vibrate && navigator.vibrate(50);
+        };
+
         window.toggleTimer = () => {
             if (state.running) { state.baseSec += Math.floor((getSyncedTime() - state.startTs) / 1000); state.running = false; } 
             else { state.startTs = getSyncedTime(); state.running = true; if(state.mode !== "normal") state.mode = "normal"; } sync();
             navigator.vibrate && navigator.vibrate(50);
         };
 
+        // Erweiterte Halbzeit-Logik
         window.setHalf = (half) => {
-            state.half = half; state.baseSec = (half === 1) ? 0 : 45 * 60; state.startTs = getSyncedTime(); state.running = true; state.mode = "normal"; sync();
+            state.half = half; 
+            if (half === 1) state.baseSec = 0;
+            else if (half === 2) state.baseSec = 45 * 60;
+            else if (half === 3) state.baseSec = 90 * 60;  /* 90 Minuten */
+            else if (half === 4) state.baseSec = 105 * 60; /* 105 Minuten */
+            
+            state.startTs = getSyncedTime(); 
+            state.running = true; 
+            state.mode = "normal"; 
+            sync();
             navigator.vibrate && navigator.vibrate(50);
         };
 
@@ -257,7 +304,7 @@
 
         window.setManualTime = () => {
             let m = parseInt(document.getElementById('input-min').value) || 0; let s = parseInt(document.getElementById('input-sec').value) || 0;
-            if (m > 90) m = 90; if (m < 0) m = 0; if (s > 59) s = 59; if (s < 0) s = 0;
+            if (m > 120) m = 120; if (m < 0) m = 0; if (s > 59) s = 59; if (s < 0) s = 0;
             state.baseSec = (m * 60) + s; state.startTs = getSyncedTime(); if(state.mode !== "normal") state.mode = "normal"; sync();
             navigator.vibrate && navigator.vibrate(50);
         };
@@ -268,7 +315,7 @@
                 switch(e.key.toLowerCase()) {
                     case '1': window.changeScore(1, 1); break; case '2': window.changeScore(2, 1); break;
                     case 't': window.setHalf(1); break; case 'z': window.setHalf(2); break;
-                    case 'h': window.setMode('halftime'); break; case 'j': window.setMode('end'); break;
+                    case 'h': window.setMode('ht'); break; case 'j': window.setMode('end'); break;
                     case '5': window.changeScore(1, -1); break; case '6': window.changeScore(2, -1); break;
                     case ' ': e.preventDefault(); window.toggleTimer(); break;
                 }
