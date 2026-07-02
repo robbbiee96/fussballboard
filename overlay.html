@@ -2,9 +2,15 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>WM 2026 - TV Overlay Left (KO Phase Auto-Win & Sharp)</title>
+    <title>WM 2026 - TV Overlay</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto+Mono:wght@700&display=swap');
+
+        :root {
+            /* Magische Formel: 1rem entspricht jetzt exakt der Auflösung, die du in OBS einträgst.
+               Das Overlay skaliert sich mathematisch selbst und bleibt immer knackscharf. */
+            font-size: calc(100vw / 19.2); 
+        }
 
         body { 
             margin: 0; 
@@ -13,8 +19,7 @@
             overflow: hidden; 
             display: flex;
             justify-content: center;
-            padding-top: 50px;
-            /* Zwingt OBS zur maximalen Textschärfe */
+            padding-top: 0.5rem;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
@@ -23,106 +28,102 @@
         .bug-container {
             display: flex;
             align-items: center;
-            /* filter: drop-shadow ENTFERNT, um den Unschärfe-Bug in OBS zu beheben */
             position: relative;
         }
 
         /* --- DER TIMER (Links) --- */
         .timer-container {
             background: #ffffff;
-            height: 48px;
-            padding: 0 35px 0 20px; 
-            border-radius: 24px 0 0 24px;
+            height: 0.48rem;
+            padding: 0 0.35rem 0 0.2rem; 
+            border-radius: 0.24rem 0 0 0.24rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 70px;
-            margin-right: -25px; 
+            min-width: 0.7rem;
+            margin-right: -0.25rem; 
             z-index: 1;
-            /* Neuer scharfer Box-Shadow */
-            box-shadow: -5px 8px 15px rgba(0,0,0,0.4);
+            box-shadow: -0.05rem 0.08rem 0.15rem rgba(0,0,0,0.4);
         }
 
-        .time-text { font-size: 26px; font-weight: 900; color: #000; }
-        .stoppage-text { color: #ff4757; font-size: 20px; font-weight: 900; margin-left: 6px; display: none; }
+        .time-text { font-size: 0.26rem; font-weight: 900; color: #000; }
+        .stoppage-text { color: #ff4757; font-size: 0.2rem; font-weight: 900; margin-left: 0.06rem; display: none; }
 
         /* --- DER HAUPTBALKEN (Rechts) --- */
         .main-bug-wrapper {
             background: linear-gradient(90deg, #ff4757, #5ee0b1, #b862ff);
-            padding: 0 2px 3px 2px; 
-            border-radius: 26px; 
+            padding: 0 0.02rem 0.03rem 0.02rem; 
+            border-radius: 0.26rem; 
             z-index: 2;
-            /* Neuer scharfer Box-Shadow */
-            box-shadow: 0px 8px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 0.08rem 0.15rem rgba(0,0,0,0.5);
         }
 
         .main-black-bar {
             background: #0a0a0a;
-            height: 48px;
-            border-radius: 24px;
+            height: 0.48rem;
+            border-radius: 0.24rem;
             display: flex;
             align-items: center;
-            padding: 0 15px;
+            padding: 0 0.15rem;
             position: relative;
         }
 
         /* TEAM STYLING */
-        .team-section { display: flex; align-items: center; gap: 10px; width: 140px; }
+        .team-section { display: flex; align-items: center; gap: 0.1rem; width: 1.4rem; }
         .team-section.left { justify-content: flex-start; }
         .team-section.right { justify-content: flex-end; }
 
-        .flag { width: 32px; height: 22px; object-fit: cover; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); }
-        .card-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid #555; }
-        .team-name { font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 1px; }
+        .flag { width: 0.32rem; height: 0.22rem; object-fit: cover; border-radius: 0.03rem; border: 0.01rem solid rgba(255,255,255,0.1); }
+        .card-dot { width: 0.08rem; height: 0.08rem; border-radius: 50%; border: 0.02rem solid #555; }
+        .team-name { font-size: 0.26rem; font-weight: 900; color: #ffffff; letter-spacing: 0.01rem; }
 
         /* SCORE BOXEN */
         .score-box {
-            background: #5ee0b1; color: #000; font-size: 30px; font-weight: 900;
-            height: 36px; width: 44px; display: flex; justify-content: center;
-            align-items: center; border-radius: 8px; margin: 0 4px;
+            background: #5ee0b1; color: #000; font-size: 0.3rem; font-weight: 900;
+            height: 0.36rem; width: 0.44rem; display: flex; justify-content: center;
+            align-items: center; border-radius: 0.08rem; margin: 0 0.04rem;
         }
 
         /* MITTEL-LOGO */
         .logo-pill {
-            background: #ffffff; width: 50px; height: 68px; border-radius: 25px;
+            background: #ffffff; width: 0.5rem; height: 0.68rem; border-radius: 0.25rem;
             display: flex; justify-content: center; align-items: center; z-index: 10;
-            margin: 0 -5px;
-            /* Angepasster Schatten */
-            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            margin: 0 -0.05rem;
+            box-shadow: 0 0.06rem 0.15rem rgba(0,0,0,0.5);
         }
-        .logo-pill img { height: 50px; object-fit: contain; }
+        .logo-pill img { height: 0.5rem; object-fit: contain; }
 
         /* --- ELFMETERSCHIEßEN PILLE --- */
         .penalty-pill {
             position: absolute;
-            top: 56px; 
+            top: 0.56rem; 
             left: 50%;
             transform: translateX(-35%); 
             background: #0a0a0a;
             color: #ffffff;
-            padding: 8px 25px;
-            border-radius: 0 0 14px 14px;
+            padding: 0.08rem 0.25rem;
+            border-radius: 0 0 0.14rem 0.14rem;
             display: flex;
-            gap: 15px;
+            gap: 0.15rem;
             align-items: center;
             z-index: 0;
-            border: 1px solid #222;
+            border: 0.01rem solid #222;
             border-top: none;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 0.08rem 0.15rem rgba(0,0,0,0.5);
             display: none; 
         }
 
-        .pen-text { color: #fbc531; font-size: 15px; font-weight: 900; letter-spacing: 1px; }
+        .pen-text { color: #fbc531; font-size: 0.15rem; font-weight: 900; letter-spacing: 0.01rem; }
 
         /* Elfmeter-Punkte */
-        .pen-dots-container { display: flex; gap: 6px; }
+        .pen-dots-container { display: flex; gap: 0.06rem; }
         .pen-dot {
-            width: 12px; height: 12px; border-radius: 50%;
-            background: transparent; border: 2px solid #555;
+            width: 0.12rem; height: 0.12rem; border-radius: 50%;
+            background: transparent; border: 0.02rem solid #555;
             transition: all 0.3s ease;
         }
-        .pen-dot.scored { background: #5ee0b1; border-color: #5ee0b1; box-shadow: 0 0 8px rgba(94, 224, 177, 0.6); }
-        .pen-dot.missed { background: #ff4757; border-color: #ff4757; box-shadow: 0 0 8px rgba(255, 71, 87, 0.6); }
+        .pen-dot.scored { background: #5ee0b1; border-color: #5ee0b1; box-shadow: 0 0 0.08rem rgba(94, 224, 177, 0.6); }
+        .pen-dot.missed { background: #ff4757; border-color: #ff4757; box-shadow: 0 0 0.08rem rgba(255, 71, 87, 0.6); }
 
         @keyframes goalFlash { 
             0% { background: #5ee0b1; color: #000; } 
