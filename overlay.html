@@ -37,19 +37,8 @@
             z-index: 1;
         }
 
-        .time-text {
-            font-size: 26px;
-            font-weight: 900;
-            color: #000;
-        }
-
-        .stoppage-text {
-            color: #ff4757;
-            font-size: 20px;
-            font-weight: 900;
-            margin-left: 6px;
-            display: none;
-        }
+        .time-text { font-size: 26px; font-weight: 900; color: #000; }
+        .stoppage-text { color: #ff4757; font-size: 20px; font-weight: 900; margin-left: 6px; display: none; }
 
         /* --- DER HAUPTBALKEN (Rechts) --- */
         .main-bug-wrapper {
@@ -70,98 +59,60 @@
         }
 
         /* TEAM STYLING */
-        .team-section {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 140px;
-        }
+        .team-section { display: flex; align-items: center; gap: 10px; width: 140px; }
         .team-section.left { justify-content: flex-start; }
         .team-section.right { justify-content: flex-end; }
 
-        .flag {
-            width: 32px;
-            height: 22px;
-            object-fit: cover;
-            border-radius: 3px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .card-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            border: 2px solid #555;
-        }
-
-        .team-name {
-            font-size: 26px;
-            font-weight: 900;
-            color: #ffffff;
-            letter-spacing: 1px;
-        }
+        .flag { width: 32px; height: 22px; object-fit: cover; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); }
+        .card-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid #555; }
+        .team-name { font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 1px; }
 
         /* SCORE BOXEN */
         .score-box {
-            background: #5ee0b1;
-            color: #000;
-            font-size: 30px;
-            font-weight: 900;
-            height: 36px;
-            width: 44px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 8px;
-            margin: 0 4px;
+            background: #5ee0b1; color: #000; font-size: 30px; font-weight: 900;
+            height: 36px; width: 44px; display: flex; justify-content: center;
+            align-items: center; border-radius: 8px; margin: 0 4px;
         }
 
         /* MITTEL-LOGO */
         .logo-pill {
-            background: #ffffff;
-            width: 50px;
-            height: 68px;
-            border-radius: 25px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            margin: 0 -5px;
+            background: #ffffff; width: 50px; height: 68px; border-radius: 25px;
+            display: flex; justify-content: center; align-items: center; z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3); margin: 0 -5px;
         }
+        .logo-pill img { height: 50px; object-fit: contain; }
 
-        .logo-pill img {
-            height: 50px;
-            object-fit: contain;
-        }
-
-        /* --- ELFMETERSCHIEßEN PILLE (Neu) --- */
+        /* --- ELFMETERSCHIEßEN PILLE (Neue Position & Layout) --- */
         .penalty-pill {
             position: absolute;
-            top: 48px; /* Rollt unter dem Hauptbalken hervor */
+            top: 56px; /* Weiter nach unten gezogen, damit das Logo nicht mehr überlappt */
             left: 50%;
-            transform: translateX(-35%); /* Leicht versetzt wegen dem asymmetrischen Layout */
+            transform: translateX(-35%); /* Leicht versetzt, um den Timer auszugleichen */
             background: #0a0a0a;
             color: #ffffff;
-            padding: 3px 20px 4px 20px;
-            border-radius: 0 0 12px 12px;
+            padding: 8px 25px;
+            border-radius: 0 0 14px 14px;
             display: flex;
             gap: 15px;
             align-items: center;
-            font-size: 18px;
-            font-weight: 900;
             z-index: 0;
             border: 1px solid #222;
             border-top: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            display: none; /* Wird via JS eingeblendet */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            display: none; 
         }
 
-        .pen-text {
-            color: #fbc531;
-            font-size: 14px;
-            letter-spacing: 1px;
+        .pen-text { color: #fbc531; font-size: 15px; font-weight: 900; letter-spacing: 1px; }
+
+        /* Die neuen Elfmeter-Punkte */
+        .pen-dots-container { display: flex; gap: 6px; }
+        .pen-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: transparent; border: 2px solid #555;
+            transition: all 0.3s ease;
         }
+        .pen-dot.scored { background: #5ee0b1; border-color: #5ee0b1; box-shadow: 0 0 8px rgba(94, 224, 177, 0.6); }
+        .pen-dot.missed { background: #ff4757; border-color: #ff4757; box-shadow: 0 0 8px rgba(255, 71, 87, 0.6); }
 
         @keyframes goalFlash { 
             0% { background: #5ee0b1; color: #000; } 
@@ -206,11 +157,10 @@
 
             </div>
             
-            <!-- Die neue Elfmeter-Anzeige -->
             <div class="penalty-pill" id="penalty-pill">
-                <span id="pen1">0</span>
+                <div class="pen-dots-container" id="pen1-dots"></div>
                 <span class="pen-text">PEN</span>
-                <span id="pen2">0</span>
+                <div class="pen-dots-container" id="pen2-dots"></div>
             </div>
         </div>
 
@@ -247,6 +197,25 @@
             el.classList.add('goal-anim');
         }
 
+        // Rendert die grünen/roten Punkte
+        function renderPenDots(containerId, shotsArray) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            const shots = shotsArray || [];
+            // Immer mindestens 5 Punkte anzeigen, ansonsten erweitern
+            const totalDots = Math.max(5, shots.length);
+
+            for (let i = 0; i < totalDots; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'pen-dot';
+                if (i < shots.length) {
+                    if (shots[i] === 1) dot.classList.add('scored');
+                    else if (shots[i] === 0) dot.classList.add('missed');
+                }
+                container.appendChild(dot);
+            }
+        }
+
         onValue(ref(db, 'match/'), (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
@@ -264,12 +233,14 @@
             document.getElementById('flag2').src = `https://flagcdn.com/${data.f2}.svg`;
             document.getElementById('score2').innerText = data.s2;
 
-            // Elfmeter-Logik
-            const penPill = document.getElementById('penalty-pill');
-            document.getElementById('pen1').innerText = data.p1 || 0;
-            document.getElementById('pen2').innerText = data.p2 || 0;
+            // Elfmeter-Logik aktualisieren
+            renderPenDots('pen1-dots', data.p1_shots);
+            renderPenDots('pen2-dots', data.p2_shots);
 
-            if (data.mode === 'pen' || (data.p1 > 0 || data.p2 > 0)) {
+            const hasPenalties = (data.p1_shots && data.p1_shots.length > 0) || (data.p2_shots && data.p2_shots.length > 0);
+            const penPill = document.getElementById('penalty-pill');
+            
+            if (data.mode === 'pen' || hasPenalties) {
                 penPill.style.display = 'flex';
             } else {
                 penPill.style.display = 'none';
@@ -291,7 +262,6 @@
             const timeEl = document.getElementById('main-time');
             const stopEl = document.getElementById('stoppage-time');
 
-            // KO-Phasen Status-Texte
             if (matchState.mode !== "normal") {
                 stopEl.style.display = 'none';
                 if (matchState.mode === 'end') timeEl.innerText = "ENDE";
@@ -309,11 +279,10 @@
             let display = total;
             let stop = 0;
             
-            // Erweiterte Logik für Verlängerung
             if (matchState.half == 1 && total >= 2700) { display = 2700; stop = total - 2700; }
             if (matchState.half == 2 && total >= 5400) { display = 5400; stop = total - 5400; }
-            if (matchState.half == 3 && total >= 6300) { display = 6300; stop = total - 6300; } // 1. HZ Verlängerung (105 Min)
-            if (matchState.half == 4 && total >= 7200) { display = 7200; stop = total - 7200; } // 2. HZ Verlängerung (120 Min)
+            if (matchState.half == 3 && total >= 6300) { display = 6300; stop = total - 6300; } 
+            if (matchState.half == 4 && total >= 7200) { display = 7200; stop = total - 7200; } 
 
             timeEl.innerText = formatTime(display);
             
