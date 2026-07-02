@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>WM 2026 - TV Overlay Left</title>
+    <title>WM 2026 - TV Overlay Left (KO Phase)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto+Mono:wght@700&display=swap');
 
@@ -16,25 +16,24 @@
             padding-top: 50px;
         }
 
-        /* Container für das gesamte Scoreboard */
         .bug-container {
             display: flex;
             align-items: center;
             filter: drop-shadow(0px 8px 15px rgba(0,0,0,0.5));
+            position: relative;
         }
 
-        /* --- DER TIMER (Jetzt Links angedockt) --- */
+        /* --- DER TIMER (Links) --- */
         .timer-container {
             background: #ffffff;
             height: 48px;
-            /* Extra Padding rechts, damit die Pille sauber unter den schwarzen Balken rutscht */
             padding: 0 35px 0 20px; 
             border-radius: 24px 0 0 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             min-width: 70px;
-            margin-right: -25px; /* Zieht den schwarzen Balken über die Timer-Pille */
+            margin-right: -25px; 
             z-index: 1;
         }
 
@@ -52,10 +51,9 @@
             display: none;
         }
 
-        /* --- DER HAUPTBALKEN (Jetzt Rechts daneben) --- */
+        /* --- DER HAUPTBALKEN (Rechts) --- */
         .main-bug-wrapper {
             background: linear-gradient(90deg, #ff4757, #5ee0b1, #b862ff);
-            /* TV-Linie: 2px Rand links, unten und rechts */
             padding: 0 2px 3px 2px; 
             border-radius: 26px; 
             z-index: 2;
@@ -103,7 +101,7 @@
             letter-spacing: 1px;
         }
 
-        /* SCORE BOXEN (Mintgrün) */
+        /* SCORE BOXEN */
         .score-box {
             background: #5ee0b1;
             color: #000;
@@ -118,7 +116,7 @@
             margin: 0 4px;
         }
 
-        /* MITTEL-LOGO (Die weiße Pille) */
+        /* MITTEL-LOGO */
         .logo-pill {
             background: #ffffff;
             width: 50px;
@@ -137,7 +135,34 @@
             object-fit: contain;
         }
 
-        /* TOR ANIMATION */
+        /* --- ELFMETERSCHIEßEN PILLE (Neu) --- */
+        .penalty-pill {
+            position: absolute;
+            top: 48px; /* Rollt unter dem Hauptbalken hervor */
+            left: 50%;
+            transform: translateX(-35%); /* Leicht versetzt wegen dem asymmetrischen Layout */
+            background: #0a0a0a;
+            color: #ffffff;
+            padding: 3px 20px 4px 20px;
+            border-radius: 0 0 12px 12px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 900;
+            z-index: 0;
+            border: 1px solid #222;
+            border-top: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            display: none; /* Wird via JS eingeblendet */
+        }
+
+        .pen-text {
+            color: #fbc531;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
         @keyframes goalFlash { 
             0% { background: #5ee0b1; color: #000; } 
             50% { background: #fff; color: #000; transform: scale(1.1); } 
@@ -151,13 +176,11 @@
 
     <div class="bug-container">
         
-        <!-- TIMER PILLE JETZT LINKS -->
         <div class="timer-container">
             <span class="time-text" id="main-time">00:00</span>
             <span class="stoppage-text" id="stoppage-time">+0:00</span>
         </div>
 
-        <!-- HAUPT-SCOREBOARD RECHTS -->
         <div class="main-bug-wrapper">
             <div class="main-black-bar">
                 
@@ -181,6 +204,13 @@
                     <img src="https://flagcdn.com/sn.svg" class="flag" id="flag2">
                 </div>
 
+            </div>
+            
+            <!-- Die neue Elfmeter-Anzeige -->
+            <div class="penalty-pill" id="penalty-pill">
+                <span id="pen1">0</span>
+                <span class="pen-text">PEN</span>
+                <span id="pen2">0</span>
             </div>
         </div>
 
@@ -234,6 +264,17 @@
             document.getElementById('flag2').src = `https://flagcdn.com/${data.f2}.svg`;
             document.getElementById('score2').innerText = data.s2;
 
+            // Elfmeter-Logik
+            const penPill = document.getElementById('penalty-pill');
+            document.getElementById('pen1').innerText = data.p1 || 0;
+            document.getElementById('pen2').innerText = data.p2 || 0;
+
+            if (data.mode === 'pen' || (data.p1 > 0 || data.p2 > 0)) {
+                penPill.style.display = 'flex';
+            } else {
+                penPill.style.display = 'none';
+            }
+
             matchState = data;
             previousState = { ...data };
             updateTimer();
@@ -250,9 +291,13 @@
             const timeEl = document.getElementById('main-time');
             const stopEl = document.getElementById('stoppage-time');
 
+            // KO-Phasen Status-Texte
             if (matchState.mode !== "normal") {
                 stopEl.style.display = 'none';
-                timeEl.innerText = matchState.mode === 'end' ? "ENDE" : "HT";
+                if (matchState.mode === 'end') timeEl.innerText = "ENDE";
+                else if (matchState.mode === 'ht') timeEl.innerText = "HT";
+                else if (matchState.mode === 'ht_et') timeEl.innerText = "HT VERL.";
+                else if (matchState.mode === 'pen') timeEl.innerText = "PEN";
                 return;
             }
 
@@ -263,10 +308,15 @@
 
             let display = total;
             let stop = 0;
+            
+            // Erweiterte Logik für Verlängerung
             if (matchState.half == 1 && total >= 2700) { display = 2700; stop = total - 2700; }
             if (matchState.half == 2 && total >= 5400) { display = 5400; stop = total - 5400; }
+            if (matchState.half == 3 && total >= 6300) { display = 6300; stop = total - 6300; } // 1. HZ Verlängerung (105 Min)
+            if (matchState.half == 4 && total >= 7200) { display = 7200; stop = total - 7200; } // 2. HZ Verlängerung (120 Min)
 
             timeEl.innerText = formatTime(display);
+            
             if (stop > 0) {
                 let stopM = Math.floor(stop / 60);
                 let stopS = stop % 60;
