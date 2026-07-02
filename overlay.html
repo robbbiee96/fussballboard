@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>WM 2026 - TV Overlay </title>
+    <title>WM 2026 - TV Overlay Left (KO Phase Auto-Win & Sharp)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Roboto+Mono:wght@700&display=swap');
 
@@ -14,12 +14,16 @@
             display: flex;
             justify-content: center;
             padding-top: 50px;
+            /* Zwingt OBS zur maximalen Textschärfe */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         .bug-container {
             display: flex;
             align-items: center;
-            filter: drop-shadow(0px 8px 15px rgba(0,0,0,0.5));
+            /* filter: drop-shadow ENTFERNT, um den Unschärfe-Bug in OBS zu beheben */
             position: relative;
         }
 
@@ -35,6 +39,8 @@
             min-width: 70px;
             margin-right: -25px; 
             z-index: 1;
+            /* Neuer scharfer Box-Shadow */
+            box-shadow: -5px 8px 15px rgba(0,0,0,0.4);
         }
 
         .time-text { font-size: 26px; font-weight: 900; color: #000; }
@@ -46,6 +52,8 @@
             padding: 0 2px 3px 2px; 
             border-radius: 26px; 
             z-index: 2;
+            /* Neuer scharfer Box-Shadow */
+            box-shadow: 0px 8px 15px rgba(0,0,0,0.5);
         }
 
         .main-black-bar {
@@ -78,7 +86,9 @@
         .logo-pill {
             background: #ffffff; width: 50px; height: 68px; border-radius: 25px;
             display: flex; justify-content: center; align-items: center; z-index: 10;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3); margin: 0 -5px;
+            margin: 0 -5px;
+            /* Angepasster Schatten */
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
         }
         .logo-pill img { height: 50px; object-fit: contain; }
 
@@ -98,7 +108,7 @@
             z-index: 0;
             border: 1px solid #222;
             border-top: none;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
             display: none; 
         }
 
@@ -262,7 +272,6 @@
             if (matchState.mode !== "normal") {
                 stopEl.style.display = 'none';
                 
-                // Neue Penalty Auto-Win Logik
                 if (matchState.mode === 'pen') {
                     const s1 = matchState.p1_shots || [];
                     const s2 = matchState.p2_shots || [];
@@ -275,16 +284,13 @@
 
                     let isDecided = false;
                     
-                    // Check: Kann ein Team noch aufholen?
                     if (sum1 > sum2 + rem2 || sum2 > sum1 + rem1) {
                         isDecided = true;
                     } 
-                    // Check: Sudden Death Entscheidung
                     else if (s1.length >= 5 && s2.length >= 5 && s1.length === s2.length && sum1 !== sum2) {
                         isDecided = true;
                     }
 
-                    // Schaltet automatisch auf ENDE um, wenn mathematisch entschieden
                     timeEl.innerText = isDecided ? "ENDE" : "PEN";
                     return;
                 }
